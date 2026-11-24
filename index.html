@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Indicadores INDEC</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#f9f9f7;--surface:#fcfcfb;--raised:#ffffff;
+  --ink:#0b0b0b;--ink-2:#52514e;--muted:#898781;
+  --grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);--wash:rgba(11,11,11,.04);
+  --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;
+  --ok:#0ca30c;--warn:#fab219;--crit:#d03b3b;--focus:#2a78d6;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#0d0d0d;--surface:#1a1a19;--raised:#222220;
+    --ink:#f0efec;--ink-2:#c3c2b7;--muted:#898781;
+    --grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--wash:rgba(255,255,255,.05);
+    --s1:#3987e5;--s2:#d95926;--s3:#199e70;--focus:#3987e5;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d;--surface:#1a1a19;--raised:#222220;
+  --ink:#f0efec;--ink-2:#c3c2b7;--muted:#898781;
+  --grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);--wash:rgba(255,255,255,.05);
+  --s1:#3987e5;--s2:#d95926;--s3:#199e70;--focus:#3987e5;
+}
+*{box-sizing:border-box}
+html{background:var(--page)}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 16px 48px}
+header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:16px}
+h1{font-size:22px;line-height:1.2;margin:0;font-weight:650;letter-spacing:-.01em}
+.sub{margin:4px 0 0;color:var(--ink-2)}
+.acciones{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer}
+button:hover{background:var(--wash)}
+button.primario{background:var(--ink);color:var(--page);border-color:transparent}
+button.primario:hover{opacity:.88}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,svg.chart:focus-visible,summary:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.estado{display:inline-flex;align-items:center;gap:7px;color:var(--ink-2);font-size:13px;margin-right:4px}
+.estado i{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.estado[data-tipo="ok"] i{background:var(--ok)}
+.estado[data-tipo="warn"] i{background:var(--warn)}
+.estado[data-tipo="error"] i{background:var(--crit)}
+.aviso{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:10px 14px;margin:0 0 16px}
+.aviso[hidden]{display:none}
+.aviso .ico{flex:none;width:18px;height:18px;border-radius:50%;background:var(--warn);color:#0b0b0b;font-weight:700;font-size:12px;display:grid;place-items:center;margin-top:1px}
+.aviso[data-tipo="error"] .ico{background:var(--crit);color:#fff}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:20px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;min-width:0}
+.tile h2{font-size:13px;font-weight:600;color:var(--ink-2);margin:0 0 8px}
+.tile .valor{font-size:32px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.tile .ref{color:var(--ink-2);font-size:12.5px;margin:3px 0 10px}
+.tile dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13px;border-top:1px solid var(--grid);padding-top:10px}
+.tile dt{color:var(--ink-2)}
+.tile dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+.filtros{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px}
+.filtros>span{color:var(--ink-2);margin-right:4px;font-size:13px}
+.filtros button{padding:5px 11px;font-size:13px}
+.filtros button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:transparent}
+.graficos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;min-width:0}
+.card h2{font-size:15px;margin:0;font-weight:600}
+.sub2{color:var(--ink-2);font-size:12.5px;margin:2px 0 8px}
+.leyenda{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--ink-2);margin:0 0 4px}
+.leyenda span{display:inline-flex;align-items:center;gap:6px}
+.key{display:inline-block;width:14px;height:2px;border-radius:1px;flex:none}
+.chart-host{position:relative;height:260px}
+svg.chart{display:block;overflow:visible;touch-action:pan-y}
+svg .grid{stroke:var(--grid);stroke-width:1}
+svg .base{stroke:var(--axis);stroke-width:1}
+svg .tick{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+svg .fin{fill:var(--ink);font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums}
+svg .cross{stroke:var(--axis);stroke-width:1}
+svg.hover path.bar:not(.activa){opacity:.45}
+.tip{position:absolute;pointer-events:none;background:var(--raised);border:1px solid var(--border);box-shadow:0 4px 16px rgba(0,0,0,.14);border-radius:8px;padding:8px 10px;font-size:12.5px;min-width:150px;z-index:5}
+.tip[hidden]{display:none}
+.tip .t{color:var(--ink-2);margin-bottom:4px}
+.tip .r{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.tip .r b{font-variant-numeric:tabular-nums;min-width:58px}
+.tip .r span:last-child{color:var(--ink-2)}
+body.cargando .graficos,body.cargando .tablas,body.cargando .tiles{opacity:.55;transition:opacity .2s}
+.tabla-wrap{overflow:auto;max-height:560px;border-top:1px solid var(--grid);margin-top:8px}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--grid)}
+thead th{position:sticky;top:0;background:var(--surface);color:var(--ink-2);font-weight:600;z-index:2}
+thead tr:first-child th{height:30px}
+thead tr:nth-child(2) th{top:30px}
+th.grupo{text-align:center;color:var(--ink)}
+.ini{border-left:1px solid var(--grid)}
+.mes{position:sticky;left:0;background:var(--surface);text-align:left;z-index:1}
+thead th.mes{z-index:3;vertical-align:bottom}
+tbody tr:hover td{background-image:linear-gradient(var(--wash),var(--wash))}
+td.na{color:var(--muted)}
+.parcial{color:var(--muted);font-size:11px;margin-left:5px}
+details.card>summary{cursor:pointer;font-weight:600;font-size:15px}
+.diag ul{margin:10px 0;padding-left:18px;color:var(--ink-2);font-size:13px}
+.diag li{margin:3px 0}
+.diag table td,.diag table th{text-align:left;white-space:normal;vertical-align:top}
+.nota{color:var(--ink-2);font-size:12.5px}
+footer{color:var(--ink-2);font-size:12px;margin-top:20px}
+dialog{border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--ink);padding:18px;max-width:460px;width:calc(100% - 32px)}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+dialog h2{font-size:16px;margin:0 0 6px}
+dialog label{display:block;font-size:13px;font-weight:600;margin-top:12px}
+dialog input{width:100%;font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--axis);background:var(--page);color:var(--ink);margin:6px 0 4px}
+dialog .acciones{justify-content:flex-end;margin-top:14px}
+@media (max-width:980px){.graficos{grid-template-columns:1fr}}
+@media (max-width:560px){.tiles{grid-template-columns:1fr}.tile .valor{font-size:28px}h1{font-size:20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Indicadores INDEC</h1>
+      <p class="sub">Actividad, inflación y costo de la construcción, directo de la API del INDEC</p>
+    </div>
+    <div class="acciones">
+      <span class="estado" id="estado" role="status" aria-live="polite"><i></i><span>Cargando…</span></span>
+      <button class="primario" id="btn-actualizar" type="button">Actualizar</button>
+      <button id="btn-csv" type="button">Descargar CSV</button>
+      <button id="btn-token" type="button">Token</button>
+    </div>
+  </header>
+
+  <div class="aviso" id="aviso" role="alert" hidden><span class="ico" aria-hidden="true">!</span><div id="aviso-txt"></div></div>
+
+  <section class="tiles" id="tiles" aria-label="Último dato de cada indicador"></section>
+
+  <div class="filtros" role="group" aria-label="Período de gráficos y tabla mensual">
+    <span>Período</span>
+    <button type="button" data-rango="12" aria-pressed="false">12 meses</button>
+    <button type="button" data-rango="24" aria-pressed="true">24 meses</button>
+    <button type="button" data-rango="60" aria-pressed="false">5 años</button>
+    <button type="button" data-rango="0" aria-pressed="false">Todo</button>
+  </div>
+
+  <section class="graficos" id="graficos" aria-label="Gráficos"></section>
+
+  <div class="tablas">
+    <section class="card">
+      <h2>Serie mensual</h2>
+      <p class="sub2">Variaciones en %. Último mes arriba. Pasá el mouse por un encabezado para ver cómo se calcula cada columna.</p>
+      <div class="tabla-wrap"><table id="t-mensual"></table></div>
+    </section>
+    <section class="card" style="margin-top:12px">
+      <h2>Resumen anual</h2>
+      <p class="sub2">Variación del año en %: diciembre, o el último mes publicado si el año está en curso.</p>
+      <div class="tabla-wrap"><table id="t-anual"></table></div>
+    </section>
+  </div>
+
+  <details class="card diag" id="diag" style="margin-top:12px">
+    <summary>Conexión y método de cálculo</summary>
+    <div id="diag-body"></div>
+  </details>
+
+  <footer>Fuentes: INDEC, Catálogo API-INDEC (versión beta); Índice Construya, Grupo Construya. Las variaciones que se calculan desde los índices pueden diferir en un decimal de las publicadas, por redondeo.</footer>
+</div>
+
+<dialog id="dlg-token" aria-labelledby="dlg-titulo">
+  <form method="dialog">
+    <h2 id="dlg-titulo">Token de la API del INDEC</h2>
+    <p class="nota" id="dlg-estado"></p>
+    <label for="inp-token">Pegar un token nuevo</label>
+    <input id="inp-token" type="password" autocomplete="off" spellcheck="false" placeholder="eyJ…">
+    <p class="nota">Queda guardado solo en este navegador. Se genera en api.indec.gob.ar, desde tu perfil.</p>
+    <div class="acciones">
+      <button type="button" id="btn-borrar-token">Borrar el guardado</button>
+      <button value="cancel">Cerrar</button>
+      <button class="primario" value="ok">Guardar y actualizar</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="application/json" id="consultas">
+[
+  {"id":"emae","nombre":"EMAE, nivel general","path":"estimador-mensual-de-actividad-economica-nivel-general",
+   "select":"tipo_de_indicador,tipo_de_indicador_descripcion,anio,mes,periodo,valor",
+   "order":"tipo_de_indicador_descripcion,anio,mes,periodo,tipo_de_indicador",
+   "variantes":[{"anio":"gte.2013"}]},
+  {"id":"sect","nombre":"EMAE, sector Construcción","path":"estimador-mensual-de-actividad-economica-sectores",
+   "select":"codigo,descripcion,tipo_de_indicador,anio,mes,periodo,valor",
+   "order":"anio,mes,codigo,descripcion,periodo,tipo_de_indicador",
+   "variantes":[{"descripcion":"ilike.*onstrucci*","anio":"gte.2013"},{"codigo":"eq.F","anio":"gte.2013"}]},
+  {"id":"ipc","nombre":"IPC nacional, nivel general","path":"ipc_nacional",
+   "select":"clasificador,nivel,codigo,descripcion,indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,anio,mes,periodo,valor",
+   "order":"clasificador,nivel,codigo,descripcion,periodo,anio,mes,indicador,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida",
+   "variantes":[{"region":"ilike.nacional","nivel":"ilike.nivel general"},{"region":"ilike.nacional","descripcion":"ilike.nivel general"},{"region":"ilike.*nacional*","descripcion":"ilike.*nivel general*"}]},
+  {"id":"icc_ng","nombre":"ICC, nivel general","path":"icc_precios_construccion",
+   "select":"indicador,codigo_apertura,clasificador,nivel,descripcion,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida,anio,mes,periodo,valor",
+   "order":"indicador,codigo_apertura,codigo_CPC_1,clasificador,nivel,descripcion,periodo,anio,mes,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida",
+   "variantes":[{"descripcion":"ilike.nivel general","anio":"gte.2015"},{"descripcion":"ilike.*nivel general*","anio":"gte.2015"}]},
+  {"id":"icc_mat","nombre":"ICC, materiales","path":"icc_precios_construccion",
+   "select":"indicador,codigo_apertura,clasificador,nivel,descripcion,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida,anio,mes,periodo,valor",
+   "order":"indicador,codigo_apertura,codigo_CPC_1,clasificador,nivel,descripcion,periodo,anio,mes,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida",
+   "variantes":[{"descripcion":"ilike.materiales","anio":"gte.2015"},{"descripcion":"ilike.*materiales*","anio":"gte.2015"}]},
+  {"id":"icc_mo","nombre":"ICC, mano de obra","path":"icc_precios_construccion",
+   "select":"indicador,codigo_apertura,clasificador,nivel,descripcion,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida,anio,mes,periodo,valor",
+   "order":"indicador,codigo_apertura,codigo_CPC_1,clasificador,nivel,descripcion,periodo,anio,mes,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida",
+   "variantes":[{"descripcion":"ilike.mano de obra","anio":"gte.2015"},{"descripcion":"ilike.*mano de obra*","anio":"gte.2015"}]},
+  {"id":"icc_gg","nombre":"ICC, gastos generales","path":"icc_precios_construccion",
+   "select":"indicador,codigo_apertura,clasificador,nivel,descripcion,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida,anio,mes,periodo,valor",
+   "order":"indicador,codigo_apertura,codigo_CPC_1,clasificador,nivel,descripcion,periodo,anio,mes,tipo_de_indicador,tipo_de_indicador_descripcion,region,unidad_de_medida",
+   "variantes":[{"descripcion":"ilike.gastos generales","anio":"gte.2015"},{"descripcion":"ilike.*gastos generales*","anio":"gte.2015"}]}
+]
+</script>
+<script src="indec_config.js"></script>
+<script src="indec_datos.js"></script>
+<script src="construya_datos.js"></script>
+<script>
+(function(){
+'use strict';
+
+/*CORE-START*/
+const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const pad2=n=>String(n).padStart(2,'0');
+const norm=s=>String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+
+function num(v){
+  if(v==null) return null;
+  if(typeof v==='number') return Number.isFinite(v)?v:null;
+  let s=String(v).trim(); if(!s) return null;
+  if(s.includes(',')) s=s.replace(/\./g,'').replace(',','.');
+  const n=Number(s); return Number.isFinite(n)?n:null;
+}
+// Período normalizado 'AAAA-MM'
+function per(r){
+  const a=num(r.anio), m=num(r.mes);
+  if(a&&m&&m>=1&&m<=12) return a+'-'+pad2(m);
+  const x=String(r.periodo==null?'':r.periodo).trim().match(/^(\d{4})-?(\d{2})/);
+  if(x&&+x[2]>=1&&+x[2]<=12) return x[1]+'-'+x[2];
+  return null;
+}
+function addM(p,n){let y=+p.slice(0,4),m=+p.slice(5)-1+n;y+=Math.floor(m/12);m=((m%12)+12)%12;return y+'-'+pad2(m+1);}
+
+// Qué mide cada fila: idx (índice), m (var. mensual), ia (var. interanual), acum (var. acumulada)
+function medida(r){
+  const a=norm(r.tipo_de_indicador), b=norm(r.tipo_de_indicador_descripcion);
+  const cod={v_m:'m',v_ia:'ia',v_acum:'acum',indice:'idx'};
+  if(cod[a]) return cod[a];
+  const t=a+' | '+b;
+  if(/incidencia|precio promedio|ponderac|unidades fisicas/.test(t)) return null;
+  if(a.startsWith('indice')||(!/var/.test(a)&&b.startsWith('indice'))) return 'idx';
+  if(t.includes('acumulad')) return 'acum';
+  if(/interanual|mismo periodo|mismo mes/.test(t)) return 'ia';
+  if(/mensual|periodo anterior|mes anterior/.test(t)) return 'm';
+  return null;
+}
+function mk(){return {idx:new Map(),m:new Map(),ia:new Map(),acum:new Map()};}
+function setOnce(map,p,v,cnt){if(map.has(p)){if(cnt&&map.get(p)!==v)cnt.dup++;return;}map.set(p,v);}
+function mapas(rows,cnt){
+  const M=mk();
+  for(const r of rows){const p=per(r),v=num(r.valor);if(!p||v==null)continue;const m=medida(r);if(m)setOnce(M[m],p,v,cnt);}
+  return M;
+}
+// Entre varias aperturas candidatas, elige la serie más completa (y, entre las completas, la preferida)
+// Si los meses nuevos llegan con la identificación escrita distinto (otra "apertura"), se suman igual
+// cuando pasan el filtro "misma" y son posteriores al último mes de la serie elegida.
+function elegirGrupo(rows,clave,bonus,misma){
+  const g=new Map();
+  for(const r of rows){const kd=clave(r),k=norm(kd);if(!g.has(k))g.set(k,{rows:[],per:new Set(),muestra:r,kd});const e=g.get(k);e.rows.push(r);const p=per(r);if(p)e.per.add(p);}
+  if(!g.size) return {rows:[],clave:null,grupos:0,extra:[],lista:[]};
+  const max=Math.max(...[...g.values()].map(e=>e.per.size));
+  let best=null;
+  for(const [k,e] of g){
+    if(e.per.size<max*0.8) continue;
+    const s=(bonus?bonus(e.muestra):0)*1e6+e.per.size;
+    if(!best||s>best.s) best={k,s,e};
+  }
+  let out=best.e.rows;const extra=[];
+  if(misma){
+    const tope=[...best.e.per].sort().pop()||'';
+    for(const e of g.values()){
+      if(e===best.e||!misma(e.muestra,best.e.muestra))continue;
+      const nuevos=e.rows.filter(r=>{const p=per(r);return p&&p>tope;});
+      if(nuevos.length){out=out.concat(nuevos);extra.push(e.kd);}
+    }
+  }
+  const rango=e=>{const ps=[...e.per].sort();return ps.length?ps[0]+' a '+ps[ps.length-1]:'sin períodos';};
+  return {rows:out,clave:best.e.kd,grupos:g.size,extra,lista:[...g.values()].map(e=>e.kd+' ('+rango(e)+')')};
+}
+const pct=(a,b)=>(a!=null&&b!=null&&b!==0)?(a/b-1)*100:null;
+const varM=(I,p)=>pct(I.get(p),I.get(addM(p,-1)));
+const varIA=(I,p)=>pct(I.get(p),I.get(addM(p,-12)));
+const varDic=(I,p)=>pct(I.get(p),I.get((+p.slice(0,4)-1)+'-12'));
+// Enero al mes contra igual período del año anterior (como "Var. Anual" del Excel)
+function ytd(I,p){
+  const y=+p.slice(0,4),m=+p.slice(5);let a=0,b=0;
+  for(let i=1;i<=m;i++){const x=I.get(y+'-'+pad2(i)),z=I.get((y-1)+'-'+pad2(i));if(x==null||z==null)return null;a+=x;b+=z;}
+  return b?(a/b-1)*100:null;
+}
+function encadenar(Mm,desde,hasta){let f=1,p=desde;while(p<=hasta){const v=Mm.get(p);if(v==null)return null;f*=1+v/100;p=addM(p,1);}return (f-1)*100;}
+const acumDesdeMes=(Mm,p)=>encadenar(Mm,p.slice(0,4)+'-01',p);
+const iaDesdeMes=(Mm,p)=>encadenar(Mm,addM(p,-11),p);
+function primero(...c){for(const [v,t] of c)if(v!=null&&Number.isFinite(v))return [v,t];return [null,null];}
+// Si la API publicara variaciones como fracción (0,019) en vez de % (1,9), las lleva a %
+function escalar(M){
+  let escalo=false;
+  for(const [k,f] of [['m',varM],['ia',varIA]]){
+    const rs=[];for(const [p,v] of M[k]){const c=f(M.idx,p);if(c!=null&&Math.abs(c)>0.5&&v!==0)rs.push(v/c);}
+    if(rs.length>=3){rs.sort((a,b)=>a-b);const med=rs[rs.length>>1];if(med>0.005&&med<0.02){for(const [p,v] of M[k])M[k].set(p,v*100);escalo=true;}}
+  }
+  if(escalo) for(const [p,v] of M.acum) M.acum.set(p,v*100);
+  return escalo;
+}
+function anual(meses){
+  const KS=['emae_acum','con_acum','cya_acum','ipc_acum','icc_acum','mat_acum','mo_acum','gg_acum'];
+  const por=new Map();
+  for(const r of meses){const y=r.p.slice(0,4);if(!por.has(y))por.set(y,{});const o=por.get(y);for(const k of KS)if(r[k]!=null)o[k]={v:r[k],mes:+r.p.slice(5)};}
+  return [...por.entries()].filter(([,o])=>Object.keys(o).length).map(([y,o])=>Object.assign({anio:+y},o)).sort((a,b)=>b.anio-a.anio);
+}
+function calcular(raw){
+  const diag={}, cnt={pub:0,calc:0,dup:0};
+  // EMAE nivel general: series original, desestacionalizada y tendencia-ciclo
+  const E={orig:mk(),sa:mk(),tc:mk()}, tiposE=new Set();
+  for(const r of raw.emae||[]){
+    const p=per(r),v=num(r.valor);if(!p||v==null)continue;
+    const txt=norm(r.tipo_de_indicador)+' '+norm(r.tipo_de_indicador_descripcion);
+    tiposE.add([r.tipo_de_indicador,r.tipo_de_indicador_descripcion].filter(Boolean).join(' · '));
+    const s=/desestacionaliz/.test(txt)?'sa':/tendencia/.test(txt)?'tc':'orig';
+    let m=medida(r);if(!m&&/var/.test(txt))m=s==='orig'?'ia':'m';
+    if(m)setOnce(E[s][m],p,v,cnt);
+  }
+  escalar(E.orig);escalar(E.sa);
+  diag.emae={tipos:[...tiposE].slice(0,12)};
+  // EMAE sector Construcción
+  const sr=(raw.sect||[]).filter(r=>/construcc/.test(norm(r.descripcion))||norm(r.codigo)==='f');
+  const cs=elegirGrupo(sr,r=>(r.codigo==null?'':r.codigo)+' | '+(r.descripcion==null?'':r.descripcion),r=>(norm(r.descripcion)==='construccion'?2:0)+(norm(r.codigo)==='f'?1:0),
+    r=>/construcc/.test(norm(r.descripcion)));
+  const C=mapas(cs.rows,cnt);escalar(C);
+  diag.sect=cs;
+  // IPC nacional, nivel general
+  const is=elegirGrupo(raw.ipc||[],r=>[r.clasificador,r.codigo,r.descripcion,r.indicador,r.region].map(x=>x==null?'':x).join(' | '),
+    r=>(norm(r.descripcion)==='nivel general'?2:0)+(norm(r.clasificador)==='ipc'?1:0)+(/nacional/.test(norm(r.region))?1:0),
+    r=>(norm(r.descripcion)==='nivel general'||norm(r.nivel)==='nivel general')&&(!r.region||/nacional/.test(norm(r.region))));
+  const I=mapas(is.rows,cnt);escalar(I);
+  diag.ipc=is;
+  // ICC por capítulo
+  const K={};
+  for(const [id,obj] of [['icc_ng','nivel general'],['icc_mat','materiales'],['icc_mo','mano de obra'],['icc_gg','gastos generales']]){
+    const rr=raw[id]||[];
+    let rs=rr.filter(r=>norm(r.descripcion)===obj);if(!rs.length)rs=rr.filter(r=>norm(r.descripcion).includes(obj));
+    const g=elegirGrupo(rs,r=>[r.indicador,r.clasificador,r.nivel,r.codigo_apertura,r.descripcion,r.region].map(x=>x==null?'':x).join(' | '),r=>{
+      let b=0;const c=norm(r.clasificador)+' '+norm(r.nivel);
+      if(obj!=='nivel general'&&/capitulo/.test(c))b+=2;
+      if(/costo de la construcc|icc/.test(norm(r.indicador)))b+=1;
+      if(!r.region||/gba|gran buenos/.test(norm(r.region)))b+=1;
+      return b;},(r,m)=>norm(r.descripcion)===obj&&(!r.region||/gba|gran buenos/.test(norm(r.region)))&&(norm(r.clasificador)===norm(m.clasificador)||norm(r.codigo_apertura)===norm(m.codigo_apertura)));
+    K[id]=mapas(g.rows,cnt);escalar(K[id]);
+    diag[id]=g;
+  }
+  const todas=[E.orig.idx,E.orig.ia,E.sa.idx,E.sa.m,C.idx,C.ia,I.idx,I.m,I.ia];
+  for(const x of Object.values(K))todas.push(x.idx,x.m,x.ia);
+  let maxP=null;for(const M of todas)for(const p of M.keys())if(!maxP||p>maxP)maxP=p;
+  const meses=[];
+  function fila(p){
+    const o={p};const put=(k,r)=>{o[k]=r[0];if(r[1])cnt[r[1]]++;};
+    o.emae_idx=E.orig.idx.has(p)?E.orig.idx.get(p):null;
+    o.emae_sa=E.sa.idx.has(p)?E.sa.idx.get(p):null;
+    put('emae_m',primero([E.sa.m.get(p),'pub'],[varM(E.sa.idx,p),'calc']));
+    put('emae_ly',primero([E.orig.ia.get(p),'pub'],[varIA(E.orig.idx,p),'calc']));
+    put('emae_acum',primero([E.orig.acum.get(p),'pub'],[ytd(E.orig.idx,p),'calc']));
+    o.con_idx=C.idx.has(p)?C.idx.get(p):null;
+    put('con_m',primero([varM(C.idx,p),'calc']));
+    put('con_ly',primero([C.ia.get(p),'pub'],[varIA(C.idx,p),'calc']));
+    put('con_acum',primero([C.acum.get(p),'pub'],[ytd(C.idx,p),'calc']));
+    for(const [pre,M] of [['ipc',I],['icc',K.icc_ng],['mat',K.icc_mat],['mo',K.icc_mo],['gg',K.icc_gg]]){
+      o[pre+'_idx']=M.idx.has(p)?M.idx.get(p):null;
+      put(pre+'_m',primero([M.m.get(p),'pub'],[varM(M.idx,p),'calc']));
+      put(pre+'_acum',primero([M.acum.get(p),'pub'],[varDic(M.idx,p),'calc'],[acumDesdeMes(M.m,p),'calc']));
+      put(pre+'_ly',primero([M.ia.get(p),'pub'],[varIA(M.idx,p),'calc'],[iaDesdeMes(M.m,p),'calc']));
+    }
+    return o;
+  }
+  if(maxP){let p='2015-01';while(p<=maxP){meses.push(fila(p));p=addM(p,1);}}
+  diag.conteo=cnt;
+  return {meses,anual:anual(meses),diag};
+}
+/*CORE-END*/
+
+// ───────────────────────── Interfaz ─────────────────────────
+const API_BASE='https://api.indec.gob.ar/v1/';
+const CONSULTAS=JSON.parse(document.getElementById('consultas').textContent);
+const LS_RAW='indec_tablero_raw_v1', LS_TOKEN='indec_tablero_token', LS_RANGO='indec_tablero_rango';
+const REFRESCO_MS=3*3600e3, REINTENTO_MS=30*60e3;
+const store={
+  get(k){try{return localStorage.getItem(k);}catch(e){return null;}},
+  set(k,v){try{localStorage.setItem(k,v);return true;}catch(e){return false;}},
+  del(k){try{localStorage.removeItem(k);}catch(e){}}
+};
+const $=s=>document.querySelector(s);
+function el(tag,attrs,...kids){
+  const e=document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs||{})){if(k==='class')e.className=v;else if(k==='text')e.textContent=v;else e.setAttribute(k,v);}
+  for(const k of kids)if(k!=null)e.append(k);
+  return e;
+}
+function svgEl(tag,attrs){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v] of Object.entries(attrs||{}))e.setAttribute(k,v);return e;}
+const nf1=new Intl.NumberFormat('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1});
+const nf0=new Intl.NumberFormat('es-AR',{maximumFractionDigits:0});
+const r1=v=>{const x=Math.round(v*10)/10;return x===0?0:x;};
+const f1=v=>v==null?'—':nf1.format(r1(v));
+const fPct=v=>v==null?'—':nf1.format(r1(v))+' %';
+const fPctS=v=>v==null?'—':(r1(v)>0?'+':'')+nf1.format(r1(v))+' %';
+const etiqueta=p=>MESES[+p.slice(5)-1]+'-'+p.slice(2,4);
+const etiquetaLarga=p=>MESES[+p.slice(5)-1]+' '+p.slice(0,4);
+const cuando=ts=>{const d=new Date(ts);const h=d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false});return d.toDateString()===new Date().toDateString()?'hoy a las '+h:'el '+d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})+' a las '+h;};
+
+let RAW={}, ESTADO={}, RESULT=null, ULTIMA_OK=0, ULTIMO_INTENTO=0, cargando=false, ERROR_GLOBAL=null;
+let RANGO=(()=>{const v=store.get(LS_RANGO);return v==null?24:+v||0;})();
+
+// ── Token ──
+function jwtVence(t){try{const b=t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');const p=JSON.parse(atob(b+'==='.slice((b.length+3)%4)));return p.exp?new Date(p.exp*1000):null;}catch(e){return null;}}
+function tokens(){
+  const out=[];
+  const cfg=typeof window.INDEC_TOKEN==='string'?window.INDEC_TOKEN.trim():'';
+  if(cfg)out.push({t:cfg,origen:'archivo indec_config.js'});
+  const ls=(store.get(LS_TOKEN)||'').trim();
+  if(ls)out.push({t:ls,origen:'este navegador'});
+  for(const o of out)o.vence=jwtVence(o.t);
+  return out.sort((a,b)=>(b.vence?b.vence.getTime():0)-(a.vence?a.vence.getTime():0));
+}
+const tokenActual=()=>{const t=tokens()[0];return t?t.t:null;};
+
+// ── Datos guardados ──
+function cargarBase(){
+  let cache=null;try{cache=JSON.parse(store.get(LS_RAW)||'null');}catch(e){}
+  const snap=window.INDEC_SNAPSHOT||null;
+  for(const c of CONSULTAS){
+    const cands=[cache&&cache.datasets&&cache.datasets[c.id],snap&&snap.datasets&&snap.datasets[c.id]]
+      .filter(x=>x&&Array.isArray(x.filas)&&x.filas.length).sort((a,b)=>(b.at||0)-(a.at||0));
+    if(cands[0])RAW[c.id]=cands[0];
+  }
+  ULTIMA_OK=Math.max((cache&&cache.ultimaOk)||0,(snap&&snap.ultimaOk)||0);
+}
+function guardarCache(){store.set(LS_RAW,JSON.stringify({datasets:RAW,ultimaOk:ULTIMA_OK}));}
+
+// ── API ──
+const espera=ms=>new Promise(r=>setTimeout(r,ms));
+function armarURL(c,variante,offset){
+  const q=Object.assign({},variante,{select:c.select,order:c.order,limit:'1000',offset:String(offset)});
+  return API_BASE+c.path+'?'+Object.entries(q).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
+}
+async function pedir(url,tok,intento){
+  intento=intento||1;let res;
+  try{res=await fetch(url,{headers:{Authorization:'Bearer '+tok,Accept:'application/json'},cache:'no-store'});}
+  catch(e){const err=new Error('No se pudo conectar con la API');err.tipo='red';throw err;}
+  if((res.status===429||res.status>=500)&&intento<4){await espera(1500*intento);return pedir(url,tok,intento+1);}
+  if(res.status===401||res.status===403){const err=new Error('El INDEC rechazó el token (HTTP '+res.status+')');err.tipo='auth';throw err;}
+  if(!res.ok){let det='';try{const j=await res.json();det=j.message||j.hint||'';}catch(e){}const err=new Error('HTTP '+res.status+(det?': '+det:''));err.tipo='http';throw err;}
+  const body=await res.json();
+  if(!Array.isArray(body)){const err=new Error('Respuesta con formato inesperado');err.tipo='http';throw err;}
+  return body;
+}
+async function bajarConsulta(c,tok){
+  let ultimo=null;
+  for(let vi=0;vi<c.variantes.length;vi++){
+    const filas=[];
+    try{
+      for(let pag=0;pag<30;pag++){const r=await pedir(armarURL(c,c.variantes[vi],pag*1000),tok);for(const x of r)filas.push(x);if(r.length<1000)break;}
+      if(filas.length)return {filas,variante:vi};
+      ultimo=Object.assign(new Error('La consulta no devolvió filas'),{tipo:'vacio'});
+    }catch(e){if(e.tipo==='red'||e.tipo==='auth')throw e;ultimo=e;}
+  }
+  throw ultimo||new Error('Sin datos');
+}
+async function actualizar(){
+  const tok=tokenActual();
+  if(!tok){mostrarAviso('warn','Falta el token de la API del INDEC. Tocá “Token” y pegalo.');renderEstado();return;}
+  if(cargando)return;
+  cargando=true;ULTIMO_INTENTO=Date.now();ERROR_GLOBAL=null;ESTADO={};
+  document.body.classList.add('cargando');$('#btn-actualizar').disabled=true;renderEstado();
+  const cola=CONSULTAS.slice();let corte=null;const nuevos={};
+  async function trabajador(){
+    while(cola.length&&!corte){
+      const c=cola.shift();
+      try{const r=await bajarConsulta(c,tok);nuevos[c.id]={filas:r.filas,at:Date.now()};ESTADO[c.id]={ok:true,filas:r.filas.length,variante:r.variante};}
+      catch(e){ESTADO[c.id]={ok:false,error:e.message,tipo:e.tipo};if(e.tipo==='red'||e.tipo==='auth')corte=e;}
+    }
+  }
+  await Promise.all([trabajador(),trabajador()]);
+  Object.assign(RAW,nuevos);
+  const ok=CONSULTAS.filter(c=>ESTADO[c.id]&&ESTADO[c.id].ok).length;
+  if(ok===CONSULTAS.length){ULTIMA_OK=Date.now();ocultarAviso();}
+  else if(corte&&corte.tipo==='auth'){ERROR_GLOBAL='auth';mostrarAviso('error','El INDEC rechazó el token: puede estar vencido o mal copiado. Generá uno nuevo en api.indec.gob.ar (tu perfil) y pegalo con el botón “Token”.');}
+  else if(corte&&corte.tipo==='red'&&Object.keys(RAW).length){ERROR_GLOBAL='red';ocultarAviso();}
+  else if(corte&&corte.tipo==='red'){ERROR_GLOBAL='red';mostrarAviso('warn','El navegador no pudo conectarse con la API del INDEC. Puede ser la red (proxy de la empresa) o que la API no acepte consultas desde un archivo local. '+(Object.keys(RAW).length?'Se muestran los últimos datos guardados. ':'')+'Plan B: corré actualizar_indec.py (está en esta misma carpeta) y recargá la página.');}
+  else{const malas=CONSULTAS.filter(c=>!(ESTADO[c.id]&&ESTADO[c.id].ok)).map(c=>c.nombre);mostrarAviso('warn','No se pudieron actualizar: '+malas.join(', ')+'. Para esas series se muestra el último dato guardado. El detalle está en “Conexión y método de cálculo”, al pie.');}
+  if(ok)guardarCache();
+  cargando=false;document.body.classList.remove('cargando');$('#btn-actualizar').disabled=false;
+  recalcular();
+}
+
+// ── Render ──
+function mostrarAviso(tipo,txt){const a=$('#aviso');a.dataset.tipo=tipo;$('#aviso-txt').textContent=txt;a.hidden=false;}
+function ocultarAviso(){$('#aviso').hidden=true;}
+function renderEstado(){
+  const e=$('#estado'),t=e.querySelector('span');let tipo='',txt='';
+  if(cargando){tipo='';txt='Consultando la API…';}
+  else if(!Object.keys(RAW).length){tipo='error';txt='Sin datos todavía';}
+  else if(ERROR_GLOBAL==='sin-token'){tipo=ULTIMA_OK&&Date.now()-ULTIMA_OK<72*3600e3?'ok':'warn';txt=ULTIMA_OK?'Datos al '+new Date(ULTIMA_OK).toLocaleDateString('es-AR')+' · '+new Date(ULTIMA_OK).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',hour12:false}):'Datos guardados';}
+  else if(ERROR_GLOBAL==='red'){
+    const viejo=!ULTIMA_OK||Date.now()-ULTIMA_OK>36*3600e3;
+    tipo=viejo?'warn':'ok';
+    txt=ULTIMA_OK?'Datos del script · '+cuando(ULTIMA_OK):'Datos del script';
+    if(viejo&&$('#aviso').hidden)mostrarAviso('warn','Los datos tienen más de un día. Corré actualizar_indec.py (está en esta misma carpeta) y recargá la página.');
+  }
+  else if(ERROR_GLOBAL||CONSULTAS.some(c=>ESTADO[c.id]&&!ESTADO[c.id].ok)){tipo='warn';txt=ULTIMA_OK?'Datos guardados '+cuando(ULTIMA_OK):'Datos incompletos';}
+  else if(ULTIMA_OK){tipo='ok';txt='Al día · consultado '+cuando(ULTIMA_OK);}
+  else{tipo='warn';txt='Datos guardados';}
+  e.dataset.tipo=tipo;t.textContent=txt;
+}
+function recalcular(){
+  const raw={};for(const c of CONSULTAS)raw[c.id]=RAW[c.id]?RAW[c.id].filas:[];
+  RESULT=calcular(raw);sumarConstruya(RESULT);render();
+}
+// Índice Construya: viene de construya.csv, que actualizar_indec.py pasa a construya_datos.js
+function sumarConstruya(R){
+  const C=window.CONSTRUYA;
+  if(!C||!Array.isArray(C.filas))return;
+  const by=new Map(C.filas.filter(f=>f&&/^\d{4}-\d{2}$/.test(f.p)).map(f=>[f.p,f]));
+  if(!by.size)return;
+  const ult=[...by.keys()].sort().pop();
+  let p=R.meses.length?addM(R.meses[R.meses.length-1].p,1):'2015-01';
+  while(p<=ult){R.meses.push({p});p=addM(p,1);}
+  const v=x=>(typeof x==='number'&&Number.isFinite(x))?x:null;
+  for(const r of R.meses){
+    const f=by.get(r.p);
+    r.cya_idx=f?v(f.idx):null;r.cya_sa=f?v(f.sa):null;r.cya_m=f?v(f.m):null;r.cya_ly=f?v(f.ly):null;
+    r.cya_acum=f?(v(f.acum)!=null?v(f.acum):(r.p.endsWith('-01')?v(f.ly):null)):null;
+  }
+  R.anual=anual(R.meses);
+}
+function mesesEnRango(){const ms=RESULT?RESULT.meses:[];return RANGO?ms.slice(Math.max(0,ms.length-RANGO)):ms;}
+function ultimoCon(k){const ms=RESULT?RESULT.meses:[];for(let i=ms.length-1;i>=0;i--)if(ms[i][k]!=null)return ms[i];return null;}
+
+const TILES=[
+  {titulo:'EMAE · actividad económica',k:'emae_ly',lab:'Var. LY',filas:[['emae_m','Var. mes (desestacionalizada)'],['emae_acum','Var. acumulada del año']]},
+  {titulo:'Construcción · EMAE sectorial',k:'con_ly',lab:'Var. LY',filas:[['con_m','Var. mes (serie original)'],['con_acum','Var. acumulada del año']]},
+  {titulo:'Índice Construya',k:'cya_ly',lab:'Var. LY (serie con estacionalidad)',filas:[['cya_acum','Var. acumulada del año'],['cya_idx','Índice con estacionalidad','num']]},
+  {titulo:'IPC · inflación',k:'ipc_m',lab:'Var. mes',filas:[['ipc_acum','Var. acumulada del año'],['ipc_ly','Var. LY']]},
+  {titulo:'ICC · costo de la construcción',k:'icc_m',lab:'Var. mes',filas:[['icc_acum','Var. acumulada del año'],['icc_ly','Var. LY'],['mat_m','Materiales, var. mes'],['mo_m','Mano de obra, var. mes']]}
+];
+function renderTiles(){
+  const host=$('#tiles');host.textContent='';
+  for(const t of TILES){
+    const r=ultimoCon(t.k);
+    const dl=el('dl');
+    for(const [k,lab,fmt] of t.filas)dl.append(el('dt',{text:lab}),el('dd',{text:r?(fmt==='num'?f1(r[k]):fPctS(r[k])):'—'}));
+    host.append(el('article',{class:'tile'},
+      el('h2',{text:t.titulo}),
+      el('div',{class:'valor',text:r?fPctS(r[t.k]):'—'}),
+      el('div',{class:'ref',text:r?t.lab+' · '+etiquetaLarga(r.p):'Sin datos todavía'}),
+      dl));
+  }
+}
+
+const GRAFICOS=[
+  {titulo:'Actividad: variación interanual',sub:'EMAE (serie original) e Índice Construya · % contra el mismo mes del año anterior',tipo:'linea',series:[{k:'emae_ly',n:'EMAE nivel general'},{k:'con_ly',n:'EMAE Construcción'},{k:'cya_ly',n:'Índice Construya'}]},
+  {titulo:'Inflación mensual',sub:'IPC nacional, nivel general · % contra el mes anterior',tipo:'barra',series:[{k:'ipc_m',n:'IPC'}]},
+  {titulo:'Inflación y costo de la construcción',sub:'% contra el mismo mes del año anterior',tipo:'linea',series:[{k:'ipc_ly',n:'IPC'},{k:'icc_ly',n:'ICC (GBA)'}]},
+  {titulo:'Costo de la construcción por componente',sub:'ICC GBA · % contra el mismo mes del año anterior',tipo:'linea',series:[{k:'mat_ly',n:'Materiales'},{k:'mo_ly',n:'Mano de obra'},{k:'gg_ly',n:'Gastos generales'}]}
+];
+function niceTicks(lo,hi,count){
+  if(lo===hi){hi=lo+1;}
+  const raw=(hi-lo)/count,mag=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/mag;
+  const st=(f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*mag;
+  const a=Math.floor(lo/st)*st,b=Math.ceil(hi/st)*st,out=[];
+  for(let v=a;v<=b+st/2;v+=st)out.push(Math.round(v/st)*st);
+  return out;
+}
+function xLabels(datos,banda){
+  const n=datos.length,out=[];
+  if(n>36){
+    const cada=12*banda>=40?1:2;
+    datos.forEach((d,i)=>{if(d.p.endsWith('-01')&&(+d.p.slice(0,4))%cada===0)out.push([i,d.p.slice(0,4)]);});
+    return out;
+  }
+  const paso=[1,2,3,4,6,12].find(s=>s*banda>=54)||12;
+  datos.forEach((d,i)=>{if((+d.p.slice(5)-1)%paso===0)out.push([i,etiqueta(d.p)]);});
+  return out;
+}
+function barPath(cx,bw,y0,y1){
+  const r=Math.min(4,bw/2,Math.abs(y1-y0)),x0=cx-bw/2,x1=cx+bw/2;
+  if(y1<=y0)return 'M'+x0+','+y0+'V'+(y1+r)+'Q'+x0+','+y1+' '+(x0+r)+','+y1+'H'+(x1-r)+'Q'+x1+','+y1+' '+x1+','+(y1+r)+'V'+y0+'Z';
+  return 'M'+x0+','+y0+'V'+(y1-r)+'Q'+x0+','+y1+' '+(x0+r)+','+y1+'H'+(x1-r)+'Q'+x1+','+y1+' '+x1+','+(y1-r)+'V'+y0+'Z';
+}
+function dibujar(host,g,todos){
+  host.textContent='';
+  const tiene=d=>g.series.some(s=>d[s.k]!=null);
+  let a=0,b=todos.length-1;while(a<=b&&!tiene(todos[a]))a++;while(b>=a&&!tiene(todos[b]))b--;
+  const datos=todos.slice(a,b+1),n=datos.length;
+  if(!n){host.append(el('p',{class:'nota',text:'Sin datos para este período.'}));return;}
+  const linea=g.tipo==='linea';
+  const W=Math.max(260,Math.floor(host.clientWidth)),H=260,M={t:18,r:linea?58:22,b:26,l:46};
+  const pw=W-M.l-M.r,ph=H-M.t-M.b,banda=pw/n;
+  const vals=[];for(const d of datos)for(const s of g.series)if(d[s.k]!=null)vals.push(d[s.k]);
+  const ticks=niceTicks(Math.min(0,...vals),Math.max(0,...vals),5),lo=ticks[0],hi=ticks[ticks.length-1];
+  const X=linea?(i=>M.l+(n===1?pw/2:i*pw/(n-1))):(i=>M.l+(i+0.5)*banda);
+  const Y=v=>M.t+ph-(v-lo)/((hi-lo)||1)*ph;
+  const svg=svgEl('svg',{width:W,height:H,viewBox:'0 0 '+W+' '+H,class:'chart',tabindex:'0',role:'img','aria-label':g.titulo+'. Con las flechas recorrés los meses; los valores también están en la tabla mensual.'});
+  const dec=(ticks[1]-ticks[0])<1?1:0;
+  for(const t of ticks){
+    svg.append(svgEl('line',{x1:M.l,x2:W-M.r,y1:Y(t),y2:Y(t),class:t===0?'base':'grid'}));
+    const tx=svgEl('text',{x:M.l-8,y:Y(t)+3.5,'text-anchor':'end',class:'tick'});tx.textContent=dec?nf1.format(t):nf0.format(t);svg.append(tx);
+  }
+  for(const [i,txt] of xLabels(datos,linea?pw/Math.max(1,n-1):banda)){const tx=svgEl('text',{x:X(i),y:H-7,'text-anchor':'middle',class:'tick'});tx.textContent=txt;svg.append(tx);}
+  const color=si=>'var(--s'+(si+1)+')';
+  if(linea){
+    const fins=[];
+    g.series.forEach((s,si)=>{
+      let d='',pen=false,last=-1;
+      datos.forEach((r,i)=>{const v=r[s.k];if(v==null){pen=false;return;}d+=(pen?'L':'M')+X(i).toFixed(1)+' '+Y(r[s.k]).toFixed(1);pen=true;last=i;});
+      if(!d)return;
+      const path=svgEl('path',{d,fill:'none','stroke-width':'2','stroke-linejoin':'round','stroke-linecap':'round'});path.style.stroke=color(si);svg.append(path);
+      const c=svgEl('circle',{cx:X(last),cy:Y(datos[last][s.k]),r:'4','stroke-width':'2'});c.style.fill=color(si);c.style.stroke='var(--surface)';svg.append(c);
+      fins.push({x:X(last),y:Y(datos[last][s.k]),v:datos[last][s.k]});
+    });
+    const ys=fins.map(f=>f.y).sort((p,q)=>p-q);let choca=false;for(let i=1;i<ys.length;i++)if(ys[i]-ys[i-1]<14)choca=true;
+    if(!choca)for(const f of fins){const tx=svgEl('text',{x:f.x+8,y:f.y+4,class:'fin'});tx.textContent=fPct(f.v);svg.append(tx);}
+  }else{
+    const bw=Math.min(24,Math.max(1,Math.min(banda*0.62,banda-2))),y0=Y(0);let ult=-1;
+    g.series.forEach((s,si)=>datos.forEach((r,i)=>{const v=r[s.k];if(v==null)return;const p=svgEl('path',{d:barPath(X(i),bw,y0,Y(v)),class:'bar'});p.style.fill=color(si);p.dataset.i=i;svg.append(p);ult=i;}));
+    if(ult>=0){const v=datos[ult][g.series[0].k];const tx=svgEl('text',{x:X(ult),y:v>=0?Y(v)-6:Y(v)+14,'text-anchor':'middle',class:'fin'});tx.textContent=fPct(v);svg.append(tx);}
+  }
+  // Capa de hover y teclado
+  const cross=svgEl('line',{y1:M.t,y2:M.t+ph,class:'cross',visibility:'hidden'});if(linea)svg.append(cross);
+  const dots=linea?g.series.map((s,si)=>{const c=svgEl('circle',{r:'4','stroke-width':'2',visibility:'hidden'});c.style.fill=color(si);c.style.stroke='var(--surface)';svg.append(c);return c;}):[];
+  const hit=svgEl('rect',{x:M.l-4,y:0,width:pw+8,height:H,fill:'transparent'});svg.append(hit);
+  const tip=el('div',{class:'tip',hidden:''});host.append(svg,tip);
+  let actual=-1;
+  function mostrar(i){
+    if(i<0||i>=n)return;actual=i;const r=datos[i];
+    if(linea){cross.setAttribute('x1',X(i));cross.setAttribute('x2',X(i));cross.setAttribute('visibility','visible');
+      g.series.forEach((s,si)=>{const v=r[s.k],c=dots[si];if(v==null){c.setAttribute('visibility','hidden');return;}c.setAttribute('cx',X(i));c.setAttribute('cy',Y(v));c.setAttribute('visibility','visible');});}
+    else{svg.classList.add('hover');svg.querySelectorAll('path.bar').forEach(p=>p.classList.toggle('activa',+p.dataset.i===i));}
+    tip.textContent='';tip.append(el('div',{class:'t',text:etiquetaLarga(r.p)}));
+    g.series.forEach((s,si)=>{const k=el('span',{class:'key'});k.style.background=color(si);tip.append(el('div',{class:'r'},k,el('b',{text:fPct(r[s.k])}),el('span',{text:s.n})));});
+    tip.hidden=false;
+    const tw=tip.offsetWidth;let left=X(i)+14;if(left+tw>W)left=X(i)-14-tw;tip.style.left=Math.max(0,left)+'px';tip.style.top=M.t+'px';
+  }
+  function ocultar(){actual=-1;tip.hidden=true;cross.setAttribute('visibility','hidden');dots.forEach(c=>c.setAttribute('visibility','hidden'));svg.classList.remove('hover');svg.querySelectorAll('path.bar.activa').forEach(p=>p.classList.remove('activa'));}
+  function indice(e){const rc=svg.getBoundingClientRect();const px=(e.clientX-rc.left)*(W/rc.width);const i=linea?Math.round((px-M.l)/(n>1?pw/(n-1):1)):Math.floor((px-M.l)/banda);return Math.max(0,Math.min(n-1,i));}
+  hit.addEventListener('pointermove',e=>mostrar(indice(e)));
+  hit.addEventListener('pointerdown',e=>mostrar(indice(e)));
+  hit.addEventListener('pointerleave',ocultar);
+  svg.addEventListener('focus',()=>mostrar(n-1));
+  svg.addEventListener('blur',ocultar);
+  svg.addEventListener('keydown',e=>{
+    const base=actual<0?n-1:actual;
+    if(e.key==='ArrowLeft'){mostrar(Math.max(0,base-1));e.preventDefault();}
+    else if(e.key==='ArrowRight'){mostrar(Math.min(n-1,base+1));e.preventDefault();}
+    else if(e.key==='Home'){mostrar(0);e.preventDefault();}
+    else if(e.key==='End'){mostrar(n-1);e.preventDefault();}
+    else if(e.key==='Escape')ocultar();
+  });
+}
+let anchoGraficos=0;
+function renderGraficos(){
+  const host=$('#graficos');host.textContent='';
+  const datos=mesesEnRango();const hosts=[];
+  for(const g of GRAFICOS){
+    const card=el('section',{class:'card'},el('h2',{text:g.titulo}),el('p',{class:'sub2',text:g.sub}));
+    if(g.series.length>1){const lg=el('div',{class:'leyenda'});g.series.forEach((s,si)=>{const k=el('span',{class:'key'});k.style.background='var(--s'+(si+1)+')';lg.append(el('span',{},k,document.createTextNode(s.n)));});card.append(lg);}
+    const ch=el('div',{class:'chart-host'});card.append(ch);host.append(card);hosts.push([ch,g]);
+  }
+  for(const [ch,g] of hosts)dibujar(ch,g,datos);
+  anchoGraficos=host.clientWidth;
+}
+
+const COLS=[
+  {g:'EMAE',cols:[['emae_m','Var. mes','Serie desestacionalizada, % contra el mes anterior'],['emae_ly','Var. LY','Serie original, % contra el mismo mes del año anterior'],['emae_acum','Var. acum.','Enero al mes contra el mismo período del año anterior (tu “Var. Anual”)']]},
+  {g:'Construcción (EMAE)',cols:[['con_idx','Índice','EMAE sector Construcción, serie original, base 2004=100'],['con_m','Var. mes','Serie original, % contra el mes anterior (como tu Excel)'],['con_ly','Var. LY','% contra el mismo mes del año anterior'],['con_acum','Var. acum.','Suma enero al mes contra igual período del año anterior (como tu Excel)']]},
+  {g:'Índice Construya',cols:[['cya_sa','Índice desest.','Índice desestacionalizado publicado por Grupo Construya'],['cya_m','Var. mes','Desestacionalizada, % contra el mes anterior'],['cya_ly','Var. LY','Serie con estacionalidad, % contra el mismo mes del año anterior'],['cya_acum','Var. acum.','Acumulado del año contra igual período del año anterior']]},
+  {g:'IPC',cols:[['ipc_m','Var. mes','% contra el mes anterior'],['ipc_acum','Var. acum.','% contra diciembre del año anterior'],['ipc_ly','Var. LY','% contra el mismo mes del año anterior']]},
+  {g:'ICC',cols:[['icc_m','Var. mes','Nivel general, % contra el mes anterior'],['icc_ly','Var. LY','% contra el mismo mes del año anterior'],['icc_acum','Var. acum.','% contra diciembre del año anterior']]},
+  {g:'Materiales (ICC)',cols:[['mat_m','Var. mes','% contra el mes anterior'],['mat_ly','Var. LY','% contra el mismo mes del año anterior'],['mat_acum','Var. acum.','% contra diciembre del año anterior']]},
+  {g:'Mano de obra (ICC)',cols:[['mo_m','Var. mes','% contra el mes anterior'],['mo_ly','Var. LY','% contra el mismo mes del año anterior'],['mo_acum','Var. acum.','% contra diciembre del año anterior']]}
+];
+function renderMensual(){
+  const t=$('#t-mensual');t.textContent='';
+  const r1=el('tr'),r2=el('tr');
+  r1.append(el('th',{class:'mes',rowspan:'2',scope:'col',text:'Mes'}));
+  for(const g of COLS){
+    r1.append(el('th',{class:'grupo ini',colspan:String(g.cols.length),scope:'colgroup',text:g.g}));
+    g.cols.forEach(([,lab,tit],ci)=>r2.append(el('th',{class:ci===0?'ini':'',scope:'col',title:tit,text:lab})));
+  }
+  t.append(el('thead',{},r1,r2));
+  const tb=el('tbody');
+  const filas=mesesEnRango().filter(r=>COLS.some(g=>g.cols.some(([k])=>r[k]!=null))).reverse();
+  for(const r of filas){
+    const tr=el('tr');tr.append(el('th',{class:'mes',scope:'row',text:etiqueta(r.p)}));
+    for(const g of COLS)g.cols.forEach(([k],ci)=>{const v=r[k];const cls=(ci===0?'ini ':'')+(v==null?'na':'');tr.append(el('td',{class:cls.trim(),text:f1(v)}));});
+    tb.append(tr);
+  }
+  if(!filas.length)tb.append(el('tr',{},el('td',{class:'mes',text:'Sin datos todavía'})));
+  t.append(tb);
+}
+const ANUAL=[['emae_acum','EMAE','Var. anual (promedio del año contra el anterior)'],['con_acum','Construcción','Var. anual del EMAE sector Construcción'],['cya_acum','Construya','Acumulado anual publicado por Grupo Construya'],['ipc_acum','IPC','Diciembre contra diciembre'],['icc_acum','ICC','Diciembre contra diciembre'],['mat_acum','Materiales','Diciembre contra diciembre'],['mo_acum','Mano de obra','Diciembre contra diciembre']];
+function renderAnual(){
+  const t=$('#t-anual');t.textContent='';
+  const hr=el('tr',{},el('th',{class:'mes',scope:'col',text:'Año'}));
+  for(const [,lab,tit] of ANUAL)hr.append(el('th',{scope:'col',title:tit,text:lab}));
+  t.append(el('thead',{},hr));
+  const tb=el('tbody');
+  for(const a of (RESULT?RESULT.anual:[])){
+    const tr=el('tr',{},el('th',{class:'mes',scope:'row',text:String(a.anio)}));
+    for(const [k] of ANUAL){
+      const x=a[k];const td=el('td',{class:x?'':'na',text:x?f1(x.v):'—'});
+      if(x&&x.mes<12)td.append(el('span',{class:'parcial',text:'ene–'+MESES[x.mes-1]}));
+      tr.append(td);
+    }
+    tb.append(tr);
+  }
+  t.append(tb);
+}
+function renderDiag(){
+  const body=$('#diag-body');body.textContent='';
+  const ul=el('ul');
+  for(const s of [
+    'EMAE: “Var. mes” usa la serie desestacionalizada; “Var. LY” y “Var. acum.” usan la serie original. “Var. acum.” es enero al mes contra igual período del año anterior, como tu columna “Var. Anual”.',
+    'Construcción: EMAE por sector, serie original. “Var. mes” y “Var. acum.” se calculan igual que en tu Excel (mes contra mes anterior, y suma de enero al mes contra igual período del año anterior).',
+    'IPC e ICC: se usan las variaciones que publica el INDEC. Si falta alguna, se calcula desde el índice. Tu Excel arma el IPC interanual encadenando las mensuales redondeadas, por eso puede diferir en algunas décimas del dato oficial.',
+    'Índice Construya: se carga a mano en construya.csv (una fila por mes, separada por punto y coma). Al correr, actualizar_indec.py lo pasa al tablero.',
+    'Se consulta la API al abrir la página y cada 3 horas mientras esté abierta. El INDEC carga cada dato nuevo después de las 16 h del día de publicación.',
+    'El CSV trae todas las columnas con todos los decimales, separado por comas y con punto decimal.'
+  ])ul.append(el('li',{text:s}));
+  body.append(ul);
+  const tbl=el('table');
+  tbl.append(el('thead',{},el('tr',{},...['Serie','Estado','Filas','Último período','Detalle'].map(x=>el('th',{scope:'col',text:x})))));
+  const tb=el('tbody');const D=RESULT?RESULT.diag:{};
+  for(const c of CONSULTAS){
+    const st=ESTADO[c.id],raw=RAW[c.id];
+    let ultimo=null;if(raw)for(const r of raw.filas){const p=per(r);if(p&&(!ultimo||p>ultimo))ultimo=p;}
+    const estado=st&&st.ok?'Actualizada'+(st.variante?' (consulta alternativa '+(st.variante+1)+')':'')
+      :raw?'Dato guardado '+cuando(raw.at||0)+(st&&st.tipo==='red'?' (sin conexión directa)':st?' · última consulta: '+st.error:'')
+      :st?'Error: '+st.error:'Sin datos';
+    let det='';const d=D[c.id];
+    if(c.id==='emae'&&d)det='Tipos: '+d.tipos.join(' / ');
+    else if(d&&d.clave){
+      det='Serie usada: '+d.clave;
+      if(d.extra&&d.extra.length)det+=' · meses nuevos tomados de: '+d.extra.join(' / ');
+      if(d.grupos>1)det+=' · aperturas encontradas: '+d.lista.join(' / ');
+    }
+    tb.append(el('tr',{},el('td',{text:c.nombre}),el('td',{text:estado}),el('td',{text:raw?String(raw.filas.length):'—'}),el('td',{text:ultimo?etiquetaLarga(ultimo):'—'}),el('td',{text:det})));
+  }
+  const CY=window.CONSTRUYA,cyf=CY&&Array.isArray(CY.filas)?CY.filas:[];
+  const cyUlt=cyf.length?cyf.map(f=>f.p).sort().pop():null;
+  tb.append(el('tr',{},el('td',{text:'Índice Construya'}),
+    el('td',{text:cyf.length?'Cargado de construya.csv '+cuando(CY.generado||0):'Falta construya_datos.js: corré actualizar_indec.py con construya.csv en esta carpeta'}),
+    el('td',{text:cyf.length?String(cyf.length):'—'}),el('td',{text:cyUlt?etiquetaLarga(cyUlt):'—'}),
+    el('td',{text:'Valores tal cual los publica Grupo Construya'})));
+  tbl.append(tb);body.append(el('div',{class:'tabla-wrap'},tbl));
+  const cn=D.conteo||{pub:0,calc:0,dup:0};
+  const tk=tokens()[0];
+  body.append(el('p',{class:'nota',text:'Valores tomados tal cual los publica el INDEC: '+cn.pub+' · calculados desde índices: '+cn.calc+(cn.dup?' · filas duplicadas descartadas: '+cn.dup:'')+'. Token: '+(tk?'desde '+tk.origen+(tk.vence?', vence el '+tk.vence.toLocaleDateString('es-AR'):''):'no configurado')+'.'}));
+}
+function render(){renderEstado();renderTiles();renderGraficos();renderMensual();renderAnual();renderDiag();avisoVencimiento();}
+function avisoVencimiento(){
+  if(!$('#aviso').hidden)return;
+  const tk=tokens()[0];if(!tk||!tk.vence)return;
+  const dias=Math.floor((tk.vence-Date.now())/864e5);
+  if(dias<0)mostrarAviso('error','El token venció el '+tk.vence.toLocaleDateString('es-AR')+'. Generá uno nuevo en api.indec.gob.ar y pegalo con el botón “Token”.');
+  else if(dias<=20)mostrarAviso('warn','El token vence en '+dias+' días ('+tk.vence.toLocaleDateString('es-AR')+'). Generá uno nuevo en api.indec.gob.ar y pegalo con el botón “Token”.');
+}
+
+// ── CSV ──
+const CSV=[['p','periodo']];
+for(const [k,h] of [['emae_idx','emae_indice_original'],['emae_sa','emae_indice_desest'],['emae_m','emae_var_mes_desest'],['emae_ly','emae_var_ly'],['emae_acum','emae_var_acum_anio'],
+  ['con_idx','construccion_indice'],['con_m','construccion_var_mes'],['con_ly','construccion_var_ly'],['con_acum','construccion_var_acum_anio'],
+  ['cya_idx','construya_indice'],['cya_sa','construya_indice_desest'],['cya_m','construya_var_mes_desest'],['cya_ly','construya_var_ly'],['cya_acum','construya_var_acum_anio']])CSV.push([k,h]);
+for(const [pre,h] of [['ipc','ipc'],['icc','icc'],['mat','icc_materiales'],['mo','icc_mano_obra'],['gg','icc_gastos_generales']])
+  for(const [s,hs] of [['_idx','_indice'],['_m','_var_mes'],['_ly','_var_ly'],['_acum','_var_acum_dic']])CSV.push([pre+s,h+hs]);
+function descargarCSV(){
+  if(!RESULT||!RESULT.meses.length)return;
+  const lineas=[CSV.map(c=>c[1]).join(',')];
+  for(const r of RESULT.meses){
+    if(!CSV.slice(1).some(([k])=>r[k]!=null))continue;
+    lineas.push(CSV.map(([k])=>k==='p'?r.p+'-01':(r[k]==null?'':String(Math.round(r[k]*1e6)/1e6))).join(','));
+  }
+  const blob=new Blob([lineas.join('\r\n')+'\r\n'],{type:'text/csv;charset=utf-8'});
+  const d=new Date(),f=d.getFullYear()+pad2(d.getMonth()+1)+pad2(d.getDate());
+  const a=el('a',{href:URL.createObjectURL(blob),download:'indicadores_indec_'+f+'.csv'});
+  document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+}
+
+// ── Eventos ──
+$('#btn-actualizar').addEventListener('click',()=>actualizar());
+$('#btn-csv').addEventListener('click',descargarCSV);
+const dlg=$('#dlg-token');
+function abrirToken(){
+  const ts=tokens();
+  $('#dlg-estado').textContent=ts.length?('Ahora se usa el token guardado en '+ts[0].origen+(ts[0].vence?', que vence el '+ts[0].vence.toLocaleDateString('es-AR'):'')+'.'):'Todavía no hay un token configurado.';
+  $('#inp-token').value='';
+  if(typeof dlg.showModal==='function')dlg.showModal();
+}
+$('#btn-token').addEventListener('click',abrirToken);
+$('#btn-borrar-token').addEventListener('click',()=>{store.del(LS_TOKEN);abrirToken();});
+dlg.addEventListener('close',()=>{
+  const v=$('#inp-token').value.trim();
+  if(dlg.returnValue==='ok'&&v){store.set(LS_TOKEN,v);ocultarAviso();actualizar();renderDiag();}
+});
+document.querySelectorAll('.filtros button').forEach(b=>{
+  b.setAttribute('aria-pressed',String(+b.dataset.rango===RANGO));
+  b.addEventListener('click',()=>{
+    RANGO=+b.dataset.rango;store.set(LS_RANGO,String(RANGO));
+    document.querySelectorAll('.filtros button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    renderGraficos();renderMensual();
+  });
+});
+if('ResizeObserver' in window){
+  let tm=null;
+  new ResizeObserver(()=>{const w=$('#graficos').clientWidth;if(Math.abs(w-anchoGraficos)<2)return;clearTimeout(tm);tm=setTimeout(renderGraficos,120);}).observe($('#graficos'));
+}
+function quizasActualizar(){
+  if(cargando||document.visibilityState!=='visible')return;
+  if(Date.now()-ULTIMA_OK>REFRESCO_MS&&Date.now()-ULTIMO_INTENTO>REINTENTO_MS)actualizar();
+}
+setInterval(quizasActualizar,15*60e3);
+document.addEventListener('visibilitychange',quizasActualizar);
+
+// ── Inicio ──
+cargarBase();recalcular();
+if(tokenActual())actualizar();
+else if(Object.keys(RAW).length){ERROR_GLOBAL='sin-token';renderEstado();}
+if(!tokenActual()&&/^https?:$/.test(location.protocol)){$('#btn-token').hidden=true;$('#btn-actualizar').hidden=true;}
+else{mostrarAviso('warn','Falta el token de la API del INDEC. Tocá “Token” y pegalo, o dejá el archivo indec_config.js en esta misma carpeta.');renderEstado();}
+})();
+</script>
+</body>
+</html>
