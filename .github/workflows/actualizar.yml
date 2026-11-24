@@ -1,0 +1,67 @@
+name: Actualizar datos
+
+on:
+  schedule:
+    - cron: "40 19 * * *"   # 16:40 hora argentina, todos los días
+    - cron: "15 23 * * *"   # 20:15, por si el INDEC cargó el dato tarde
+  workflow_dispatch:        # botón "Run workflow" para correrlo a mano
+  push:
+    branches: [main]
+    paths: ["construya.csv", "index.html", "actualizar_indec.py"]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: actualizar
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Bajar datos del INDEC y pasar Construya
+        id: datos
+        continue-on-error: true
+        env:
+          INDEC_API_TOKEN: ${{ secrets.INDEC_API_TOKEN }}
+        run: python actualizar_indec.py
+
+      - name: Guardar los datos en el repositorio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for f in indec_datos.js construya_datos.js; do [ -f "$f" ] && git add "$f"; done
+          if git diff --cached --quiet; then
+            echo "Sin datos nuevos"
+          else
+            git commit -m "Actualizar datos $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Publicar la página
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Avisar si la descarga falló
+        if: steps.datos.outcome == 'failure'
+        run: |
+          echo "::error::El script no pudo bajar todas las series (token vencido o API caída). Mirá el paso 'Bajar datos del INDEC'. La página quedó con los últimos datos buenos."
+          exit 1
