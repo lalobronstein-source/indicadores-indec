@@ -825,6 +825,24 @@ function quizasActualizar(){
   if(Date.now()-ULTIMA_OK>REFRESCO_MS&&Date.now()-ULTIMO_INTENTO>REINTENTO_MS)actualizar();
 }
 setInterval(quizasActualizar,15*60e3);
+// En la versión web: cada 10 minutos se fija si GitHub publicó datos nuevos y, si los hay, recarga la página
+let FIRMA=null;
+async function firmaRemota(){
+  const out=[];
+  for(const f of ['indec_datos.js','construya_datos.js']){
+    try{const r=await fetch(f+'?v='+Date.now(),{cache:'no-store'});if(!r.ok){out.push('-');continue;}
+      const t=await r.text();const m=t.match(/"generado":(\d+)/);out.push(m?m[1]:String(t.length));}
+    catch(e){return null;}
+  }
+  return out.join('|');
+}
+async function vigilar(){
+  if(!/^https?:$/.test(location.protocol)||document.visibilityState!=='visible')return;
+  const f=await firmaRemota();if(f==null)return;
+  if(FIRMA===null){FIRMA=f;return;}
+  if(f!==FIRMA)location.reload();
+}
+vigilar();setInterval(vigilar,10*60e3);document.addEventListener('visibilitychange',vigilar);
 document.addEventListener('visibilitychange',quizasActualizar);
 
 // ── Inicio ──
