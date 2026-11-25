@@ -71,6 +71,15 @@ button:focus-visible,svg.chart:focus-visible,summary:focus-visible{outline:2px s
 .leyenda{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--ink-2);margin:0 0 4px}
 .leyenda span{display:inline-flex;align-items:center;gap:6px}
 .key{display:inline-block;width:14px;height:2px;border-radius:1px;flex:none}
+.seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:2px;border:1px solid var(--border);border-radius:8px;margin:0 0 10px}
+.seg button{border:0;background:transparent;padding:3px 9px;font-size:12px;border-radius:6px;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--page)}
+.card .seg{margin:2px 0 8px}
+.seg-corto{display:grid;grid-template-columns:repeat(3,auto);width:100%}
+.seg-corto button{padding:3px 4px;font-size:11.5px;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;font-size:12.5px;border-radius:999px;color:var(--ink-2)}
+.chip[aria-pressed="false"]{opacity:.45}
+.chip[aria-pressed="false"] .key{background:var(--muted)!important}
 .chart-host{position:relative;height:260px}
 svg.chart{display:block;overflow:visible;touch-action:pan-y}
 svg .grid{stroke:var(--grid);stroke-width:1}
@@ -547,17 +556,37 @@ const TILES=[
   {titulo:'Construcción · EMAE sectorial',k:'con_ly',lab:'Var. LY',filas:[['con_m','Var. mes (serie original)'],['con_acum','Var. acumulada del año']]},
   {titulo:'Índice Construya',k:'cya_ly',lab:'Var. LY (serie con estacionalidad)',filas:[['cya_acum','Var. acumulada del año'],['cya_idx','Índice con estacionalidad','num']]},
   {titulo:'IPC · inflación',k:'ipc_m',lab:'Var. mes',filas:[['ipc_acum','Var. acumulada del año'],['ipc_ly','Var. LY']]},
-  {titulo:'ICC · costo de la construcción',k:'icc_m',lab:'Var. mes',filas:[['icc_acum','Var. acumulada del año'],['icc_ly','Var. LY'],['mat_m','Materiales, var. mes'],['mo_m','Mano de obra, var. mes']]}
+  {titulo:'ICC · costo de la construcción',sw:'tileIcc',k:c=>c+'_m',lab:'Var. mes',filas:c=>[[c+'_acum','Var. acumulada del año'],[c+'_ly','Var. LY']]}
 ];
+// Componentes del ICC: cada uno tiene su color fijo en todos los gráficos
+const ICC_OPC=[['icc','General'],['mat','Materiales'],['mo','Mano de obra']];
+const ICC_COLOR={icc:'var(--s1)',mat:'var(--s2)',mo:'var(--s3)'};
+const LS_PREF='indec_tablero_pref';
+const PREF=(()=>{try{return JSON.parse(store.get(LS_PREF)||'{}')||{};}catch(e){return {};}})();
+const guardarPref=()=>store.set(LS_PREF,JSON.stringify(PREF));
+const iccSel=clave=>ICC_OPC.some(o=>o[0]===PREF[clave])?PREF[clave]:'icc';
+const ICC_CORTO={icc:'General',mat:'Materiales',mo:'M. de obra'};
+function selector(clave,etiqueta,alCambiar,corto){
+  const g=el('div',{class:'seg'+(corto?' seg-corto':''),role:'group','aria-label':etiqueta});const act=iccSel(clave);
+  for(const [id,n] of ICC_OPC){
+    const b=el('button',{type:'button','aria-pressed':String(id===act),text:corto?ICC_CORTO[id]:n,title:n});
+    b.addEventListener('click',()=>{PREF[clave]=id;guardarPref();alCambiar();});
+    g.append(b);
+  }
+  return g;
+}
 function renderTiles(){
   const host=$('#tiles');host.textContent='';
   for(const t of TILES){
-    const r=ultimoCon(t.k);
+    const c=t.sw?iccSel(t.sw):null;
+    const k=typeof t.k==='function'?t.k(c):t.k, filas=typeof t.filas==='function'?t.filas(c):t.filas;
+    const r=ultimoCon(k);
     const dl=el('dl');
-    for(const [k,lab,fmt] of t.filas)dl.append(el('dt',{text:lab}),el('dd',{text:r?(fmt==='num'?f1(r[k]):fPctS(r[k])):'—'}));
+    for(const [kk,lab,fmt] of filas)dl.append(el('dt',{text:lab}),el('dd',{text:r?(fmt==='num'?f1(r[kk]):fPctS(r[kk])):'—'}));
     host.append(el('article',{class:'tile'},
       el('h2',{text:t.titulo}),
-      el('div',{class:'valor',text:r?fPctS(r[t.k]):'—'}),
+      t.sw?selector(t.sw,'Componente del ICC',renderTiles,true):null,
+      el('div',{class:'valor',text:r?fPctS(r[k]):'—'}),
       el('div',{class:'ref',text:r?t.lab+' · '+etiquetaLarga(r.p):'Sin datos todavía'}),
       dl));
   }
@@ -566,9 +595,16 @@ function renderTiles(){
 const GRAFICOS=[
   {titulo:'Actividad: variación interanual',sub:'EMAE (serie original) e Índice Construya · % contra el mismo mes del año anterior',tipo:'linea',series:[{k:'emae_ly',n:'EMAE nivel general'},{k:'con_ly',n:'EMAE Construcción'},{k:'cya_ly',n:'Índice Construya'}]},
   {titulo:'Inflación mensual',sub:'IPC nacional, nivel general · % contra el mes anterior',tipo:'barra',series:[{k:'ipc_m',n:'IPC'}]},
-  {titulo:'Inflación y costo de la construcción',sub:'% contra el mismo mes del año anterior',tipo:'linea',series:[{k:'ipc_ly',n:'IPC'},{k:'icc_ly',n:'ICC (GBA)'}]},
-  {titulo:'Costo de la construcción por componente',sub:'ICC GBA · % contra el mismo mes del año anterior',tipo:'linea',series:[{k:'mat_ly',n:'Materiales'},{k:'mo_ly',n:'Mano de obra'},{k:'gg_ly',n:'Gastos generales'}]}
+  {titulo:'Inflación y costo de la construcción',sub:'% contra el mismo mes del año anterior · el IPC va como referencia',tipo:'linea',sw:'g3',
+   series:c=>[{k:'ipc_ly',n:'IPC',color:'var(--ink-2)',dash:'5 4'},{k:c+'_ly',n:'ICC '+(c==='icc'?'general':c==='mat'?'materiales':'mano de obra'),color:ICC_COLOR[c]}]},
+  {titulo:'Costo de la construcción: general y componentes',sub:'ICC GBA · % contra el mismo mes del año anterior · tocá un nombre para mostrarlo u ocultarlo',tipo:'linea',chips:'g4',
+   series:[{id:'icc',k:'icc_ly',n:'ICC general',color:ICC_COLOR.icc},{id:'mat',k:'mat_ly',n:'Materiales',color:ICC_COLOR.mat},{id:'mo',k:'mo_ly',n:'Mano de obra',color:ICC_COLOR.mo}]}
 ];
+function keyEl(s,si){
+  const k=el('span',{class:'key'});const c=s.color||'var(--s'+(si+1)+')';
+  if(s.dash){k.style.background='none';k.style.borderTop='2px dashed '+c;k.style.height='0';}else k.style.background=c;
+  return k;
+}
 function niceTicks(lo,hi,count){
   if(lo===hi){hi=lo+1;}
   const raw=(hi-lo)/count,mag=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/mag;
@@ -613,14 +649,14 @@ function dibujar(host,g,todos){
     const tx=svgEl('text',{x:M.l-8,y:Y(t)+3.5,'text-anchor':'end',class:'tick'});tx.textContent=dec?nf1.format(t):nf0.format(t);svg.append(tx);
   }
   for(const [i,txt] of xLabels(datos,linea?pw/Math.max(1,n-1):banda)){const tx=svgEl('text',{x:X(i),y:H-7,'text-anchor':'middle',class:'tick'});tx.textContent=txt;svg.append(tx);}
-  const color=si=>'var(--s'+(si+1)+')';
+  const color=si=>g.series[si].color||'var(--s'+(si+1)+')';
   if(linea){
     const fins=[];
     g.series.forEach((s,si)=>{
       let d='',pen=false,last=-1;
       datos.forEach((r,i)=>{const v=r[s.k];if(v==null){pen=false;return;}d+=(pen?'L':'M')+X(i).toFixed(1)+' '+Y(r[s.k]).toFixed(1);pen=true;last=i;});
       if(!d)return;
-      const path=svgEl('path',{d,fill:'none','stroke-width':'2','stroke-linejoin':'round','stroke-linecap':'round'});path.style.stroke=color(si);svg.append(path);
+      const path=svgEl('path',{d,fill:'none','stroke-width':'2','stroke-linejoin':'round','stroke-linecap':'round'});path.style.stroke=color(si);if(s.dash)path.setAttribute('stroke-dasharray',s.dash);svg.append(path);
       const c=svgEl('circle',{cx:X(last),cy:Y(datos[last][s.k]),r:'4','stroke-width':'2'});c.style.fill=color(si);c.style.stroke='var(--surface)';svg.append(c);
       fins.push({x:X(last),y:Y(datos[last][s.k]),v:datos[last][s.k]});
     });
@@ -643,7 +679,7 @@ function dibujar(host,g,todos){
       g.series.forEach((s,si)=>{const v=r[s.k],c=dots[si];if(v==null){c.setAttribute('visibility','hidden');return;}c.setAttribute('cx',X(i));c.setAttribute('cy',Y(v));c.setAttribute('visibility','visible');});}
     else{svg.classList.add('hover');svg.querySelectorAll('path.bar').forEach(p=>p.classList.toggle('activa',+p.dataset.i===i));}
     tip.textContent='';tip.append(el('div',{class:'t',text:etiquetaLarga(r.p)}));
-    g.series.forEach((s,si)=>{const k=el('span',{class:'key'});k.style.background=color(si);tip.append(el('div',{class:'r'},k,el('b',{text:fPct(r[s.k])}),el('span',{text:s.n})));});
+    g.series.forEach((s,si)=>{const k=keyEl(s,si);tip.append(el('div',{class:'r'},k,el('b',{text:fPct(r[s.k])}),el('span',{text:s.n})));});
     tip.hidden=false;
     const tw=tip.offsetWidth;let left=X(i)+14;if(left+tw>W)left=X(i)-14-tw;tip.style.left=Math.max(0,left)+'px';tip.style.top=M.t+'px';
   }
@@ -667,9 +703,27 @@ let anchoGraficos=0;
 function renderGraficos(){
   const host=$('#graficos');host.textContent='';
   const datos=mesesEnRango();const hosts=[];
-  for(const g of GRAFICOS){
-    const card=el('section',{class:'card'},el('h2',{text:g.titulo}),el('p',{class:'sub2',text:g.sub}));
-    if(g.series.length>1){const lg=el('div',{class:'leyenda'});g.series.forEach((s,si)=>{const k=el('span',{class:'key'});k.style.background='var(--s'+(si+1)+')';lg.append(el('span',{},k,document.createTextNode(s.n)));});card.append(lg);}
+  for(const g0 of GRAFICOS){
+    let series=typeof g0.series==='function'?g0.series(iccSel(g0.sw)):g0.series;
+    const card=el('section',{class:'card'},el('h2',{text:g0.titulo}),el('p',{class:'sub2',text:g0.sub}));
+    if(g0.sw)card.append(selector(g0.sw,'Componente del ICC en el gráfico',renderGraficos));
+    const lg=el('div',{class:'leyenda'});
+    if(g0.chips){
+      const ocultas=new Set(Array.isArray(PREF[g0.chips])?PREF[g0.chips]:[]);
+      if(series.every(s=>ocultas.has(s.id)))ocultas.clear();
+      series.forEach((s,si)=>{
+        const b=el('button',{type:'button',class:'chip','aria-pressed':String(!ocultas.has(s.id))},keyEl(s,si),document.createTextNode(s.n));
+        b.addEventListener('click',()=>{
+          if(ocultas.has(s.id))ocultas.delete(s.id);
+          else if(series.filter(x=>!ocultas.has(x.id)).length>1)ocultas.add(s.id);
+          PREF[g0.chips]=[...ocultas];guardarPref();renderGraficos();
+        });
+        lg.append(b);
+      });
+      series=series.filter(s=>!ocultas.has(s.id));
+      card.append(lg);
+    }else if(series.length>1){series.forEach((s,si)=>lg.append(el('span',{},keyEl(s,si),document.createTextNode(s.n))));card.append(lg);}
+    const g=Object.assign({},g0,{series});
     const ch=el('div',{class:'chart-host'});card.append(ch);host.append(card);hosts.push([ch,g]);
   }
   for(const [ch,g] of hosts)dibujar(ch,g,datos);
@@ -821,7 +875,7 @@ if('ResizeObserver' in window){
   new ResizeObserver(()=>{const w=$('#graficos').clientWidth;if(Math.abs(w-anchoGraficos)<2)return;clearTimeout(tm);tm=setTimeout(renderGraficos,120);}).observe($('#graficos'));
 }
 function quizasActualizar(){
-  if(cargando||document.visibilityState!=='visible')return;
+  if(cargando||document.visibilityState!=='visible'||!tokenActual())return;
   if(Date.now()-ULTIMA_OK>REFRESCO_MS&&Date.now()-ULTIMO_INTENTO>REINTENTO_MS)actualizar();
 }
 setInterval(quizasActualizar,15*60e3);
