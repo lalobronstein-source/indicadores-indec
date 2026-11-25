@@ -59,7 +59,7 @@ button:focus-visible,svg.chart:focus-visible,summary:focus-visible{outline:2px s
 .tile .ref{color:var(--ink-2);font-size:12.5px;margin:3px 0 10px}
 .tile dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:13px;border-top:1px solid var(--grid);padding-top:10px}
 .tile dt{color:var(--ink-2)}
-.tile dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+.tile dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
 .filtros{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px}
 .filtros>span{color:var(--ink-2);margin-right:4px;font-size:13px}
 .filtros button{padding:5px 11px;font-size:13px}
@@ -75,6 +75,16 @@ button:focus-visible,svg.chart:focus-visible,summary:focus-visible{outline:2px s
 .seg button{border:0;background:transparent;padding:3px 9px;font-size:12px;border-radius:6px;color:var(--ink-2)}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--page)}
 .card .seg{margin:2px 0 8px}
+.duo{display:flex;gap:18px;flex-wrap:nowrap}
+@media (min-width:1200px){.tiles{grid-template-columns:repeat(4,minmax(0,1fr)) minmax(0,1.4fr)}}
+@media (min-width:561px) and (max-width:1199px){.tile-icc{grid-column:span 2}}
+.duo-lab{font-size:12px;color:var(--ink-2);margin-bottom:2px}
+table.mini{width:100%;font-size:12.5px;border-top:1px solid var(--grid);margin-top:0}
+table.mini th,table.mini td{padding:4px 0 2px 8px;border:0;white-space:normal}
+table.mini thead th{position:static;background:none;font-weight:500;font-size:11.5px;color:var(--ink-2);padding-top:8px}
+table.mini tbody th{text-align:left;font-weight:400;color:var(--ink-2);padding-left:0}
+table.mini td{font-weight:500;text-align:right;white-space:nowrap}
+.tile dl.mo{border-top:0;padding-top:4px;margin-top:2px}
 .seg-corto{display:grid;grid-template-columns:repeat(3,auto);width:100%}
 .seg-corto button{padding:3px 4px;font-size:11.5px;white-space:nowrap}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;font-size:12.5px;border-radius:999px;color:var(--ink-2)}
@@ -556,7 +566,7 @@ const TILES=[
   {titulo:'Construcción · EMAE sectorial',k:'con_ly',lab:'Var. LY',filas:[['con_m','Var. mes (serie original)'],['con_acum','Var. acumulada del año']]},
   {titulo:'Índice Construya',k:'cya_ly',lab:'Var. LY (serie con estacionalidad)',filas:[['cya_acum','Var. acumulada del año'],['cya_idx','Índice con estacionalidad','num']]},
   {titulo:'IPC · inflación',k:'ipc_m',lab:'Var. mes',filas:[['ipc_acum','Var. acumulada del año'],['ipc_ly','Var. LY']]},
-  {titulo:'ICC · costo de la construcción',sw:'tileIcc',k:c=>c+'_m',lab:'Var. mes',filas:c=>[[c+'_acum','Var. acumulada del año'],[c+'_ly','Var. LY']]}
+  {titulo:'ICC · costo de la construcción',duo:true}
 ];
 // Componentes del ICC: cada uno tiene su color fijo en todos los gráficos
 const ICC_OPC=[['icc','General'],['mat','Materiales'],['mo','Mano de obra']];
@@ -575,9 +585,26 @@ function selector(clave,etiqueta,alCambiar,corto){
   }
   return g;
 }
+// Cuadro del ICC: General y Materiales con la misma jerarquía, lado a lado
+function tileIcc(t){
+  const r=ultimoCon('icc_m')||ultimoCon('mat_m');
+  const duo=el('div',{class:'duo'});
+  for(const [pre,n] of [['icc','General'],['mat','Materiales']])
+    duo.append(el('div',{},el('div',{class:'duo-lab',text:n}),el('div',{class:'valor',text:r?fPctS(r[pre+'_m']):'—'})));
+  const tb=el('table',{class:'mini'});
+  tb.append(el('thead',{},el('tr',{},el('th',{scope:'col',text:''}),el('th',{scope:'col',text:'General'}),el('th',{scope:'col',text:'Materiales'}))));
+  const body=el('tbody');
+  for(const [suf,lab] of [['_acum','Var. acumulada del año'],['_ly','Var. LY']])
+    body.append(el('tr',{},el('th',{scope:'row',text:lab}),el('td',{text:r?fPctS(r['icc'+suf]):'—'}),el('td',{text:r?fPctS(r['mat'+suf]):'—'})));
+  tb.append(body);
+  const dl=el('dl',{class:'mo'},el('dt',{text:'Mano de obra, var. mes'}),el('dd',{text:r?fPctS(r.mo_m):'—'}));
+  return el('article',{class:'tile tile-icc'},el('h2',{text:t.titulo}),duo,
+    el('div',{class:'ref',text:r?'Var. mes · '+etiquetaLarga(r.p):'Sin datos todavía'}),tb,dl);
+}
 function renderTiles(){
   const host=$('#tiles');host.textContent='';
   for(const t of TILES){
+    if(t.duo){host.append(tileIcc(t));continue;}
     const c=t.sw?iccSel(t.sw):null;
     const k=typeof t.k==='function'?t.k(c):t.k, filas=typeof t.filas==='function'?t.filas(c):t.filas;
     const r=ultimoCon(k);
@@ -901,10 +928,11 @@ document.addEventListener('visibilitychange',quizasActualizar);
 
 // ── Inicio ──
 cargarBase();recalcular();
+const WEB=/^https?:$/.test(location.protocol);
 if(tokenActual())actualizar();
 else if(Object.keys(RAW).length){ERROR_GLOBAL='sin-token';renderEstado();}
-if(!tokenActual()&&/^https?:$/.test(location.protocol)){$('#btn-token').hidden=true;$('#btn-actualizar').hidden=true;}
-else{mostrarAviso('warn','Falta el token de la API del INDEC. Tocá “Token” y pegalo, o dejá el archivo indec_config.js en esta misma carpeta.');renderEstado();}
+else if(!WEB){mostrarAviso('warn','Falta el token de la API del INDEC. Tocá “Token” y pegalo, o dejá el archivo indec_config.js en esta misma carpeta.');renderEstado();}
+if(!tokenActual()&&WEB){$('#btn-token').hidden=true;$('#btn-actualizar').hidden=true;}
 })();
 </script>
 </body>
